@@ -1,96 +1,129 @@
 #include <iostream>
 using namespace std;
 
+const int MAXV = 100, MAXE = 1000;
+
 struct Edge {
-    int u;
-    int v;
-    int weight;
+    int u, v, w;
 };
 
-int findParent(int parent[], int vertex) {
-    if (parent[vertex] == vertex)
-        return vertex;
+class Graph {
+    int V, E;
+    Edge edges[MAXE];
 
-    return parent[vertex] = findParent(parent, parent[vertex]);
-}
-
-void unionSets(int parent[], int rank[], int u, int v) {
-    int parentU = findParent(parent, u);
-    int parentV = findParent(parent, v);
-
-    if (parentU == parentV)
-        return;
-
-    if (rank[parentU] < rank[parentV])
-        parent[parentU] = parentV;
-    else if (rank[parentU] > rank[parentV])
-        parent[parentV] = parentU;
-    else {
-        parent[parentV] = parentU;
-        rank[parentU]++;
+    int find(int parent[], int x) {
+        if (parent[x] != x) parent[x] = find(parent, parent[x]);
+        return parent[x];
     }
-}
 
-void sortEdges(Edge edges[], int edgesCount) {
-    for (int i = 0; i < edgesCount - 1; i++) {
-        for (int j = 0; j < edgesCount - i - 1; j++) {
-            if (edges[j].weight > edges[j + 1].weight) {
-                Edge temp = edges[j];
-                edges[j] = edges[j + 1];
-                edges[j + 1] = temp;
+    // simple insertion sort on edge weights (stable)
+    void sortEdges(Edge e[], int m) {
+        for (int i = 1; i < m; i++) {
+            Edge key = e[i];
+            int j = i - 1;
+            while (j >= 0 && e[j].w > key.w) {
+                e[j + 1] = e[j];
+                j--;
+            }
+            e[j + 1] = key;
+        }
+    }
+
+public:
+    Graph() { V = 0; E = 0; }
+
+    void create() {
+        int e;
+        cout << "Enter number of vertices: ";
+        cin >> V;
+        if (V <= 0 || V > MAXV) {
+            V = 0;
+            cout << "Invalid number of vertices.\n";
+            return;
+        }
+        cout << "Enter number of edges: ";
+        cin >> e;
+        E = 0;
+        cout << "Enter edges (u v w):\n";
+        for (int i = 0; i < e; i++) {
+            int u, v, w;
+            cin >> u >> v >> w;
+            if (u < 0 || v < 0 || u >= V || v >= V) {
+                cout << "Invalid edge ignored.\n";
+                continue;
+            }
+            if (E == MAXE) {
+                cout << "Edge limit reached; edge ignored.\n";
+                continue;
+            }
+            edges[E].u = u;
+            edges[E].v = v;
+            edges[E].w = w;
+            E++;
+        }
+        cout << "Graph created.\n";
+    }
+
+    void display() {
+        if (V == 0) {
+            cout << "Create the graph first.\n";
+            return;
+        }
+        cout << "Edges (u v w):\n";
+        for (int i = 0; i < E; i++)
+            cout << edges[i].u << " " << edges[i].v << " " << edges[i].w << "\n";
+    }
+
+    void kruskal() {
+        if (V == 0) {
+            cout << "Create the graph first.\n";
+            return;
+        }
+        Edge sorted[MAXE], mst[MAXV];
+        for (int i = 0; i < E; i++) sorted[i] = edges[i];
+        sortEdges(sorted, E);
+        int parent[MAXV], rnk[MAXV];
+        for (int i = 0; i < V; i++) {
+            parent[i] = i;
+            rnk[i] = 0;
+        }
+        int count = 0, total = 0;
+        for (int i = 0; i < E && count < V - 1; i++) {
+            int a = find(parent, sorted[i].u), b = find(parent, sorted[i].v);
+            if (a != b) {
+                if (rnk[a] < rnk[b]) swap(a, b);
+                parent[b] = a;
+                if (rnk[a] == rnk[b]) rnk[a]++;
+                mst[count++] = sorted[i];
+                total += sorted[i].w;
             }
         }
-    }
-}
-
-void kruskal(Edge edges[], int vertices, int edgesCount) {
-    int parent[10];
-    int rank[10] = {0};
-
-    for (int i = 0; i < vertices; i++)
-        parent[i] = i;
-
-    sortEdges(edges, edgesCount);
-
-    int totalWeight = 0;
-    int selectedEdges = 0;
-
-    cout << "\nMinimum Spanning Tree:\n";
-
-    for (int i = 0; i < edgesCount && selectedEdges < vertices - 1; i++) {
-        int u = edges[i].u;
-        int v = edges[i].v;
-
-        if (findParent(parent, u) != findParent(parent, v)) {
-            cout << u << " - " << v << " : " << edges[i].weight << "\n";
-
-            totalWeight += edges[i].weight;
-            selectedEdges++;
-
-            unionSets(parent, rank, u, v);
+        if (count != V - 1) {
+            cout << "Graph is disconnected; MST not possible.\n";
+            return;
         }
+        cout << "Edges in the MST (Kruskal):\n";
+        for (int i = 0; i < count; i++)
+            cout << mst[i].u << " - " << mst[i].v << " : " << mst[i].w << "\n";
+        cout << "Total weight of MST: " << total << "\n";
     }
-
-    cout << "Total weight: " << totalWeight << endl;
-}
+};
 
 int main() {
-    int vertices, edgesCount;
-    Edge edges[45];
-
-    cout << "Enter the number of vertices: ";
-    cin >> vertices;
-
-    cout << "Enter the number of edges: ";
-    cin >> edgesCount;
-
-    cout << "Enter the edges with their weights:\n";
-
-    for (int i = 0; i < edgesCount; i++) {
-        cin >> edges[i].u >> edges[i].v >> edges[i].weight;
+    Graph g;
+    int choice;
+    while (true) {
+        cout << "\nMenu:\n1. Create graph\n2. Display edges\n";
+        cout << "3. Kruskal's MST\n4. Quit\n";
+        cout << "Enter your choice: ";
+        if (!(cin >> choice)) break;
+        switch (choice) {
+            case 1: g.create(); break;
+            case 2: g.display(); break;
+            case 3: g.kruskal(); break;
+            case 4: cout << "Exiting program.\n"; return 0;
+            default: cout << "Invalid choice. Please try again.\n";
+        }
     }
-
-    kruskal(edges, vertices, edgesCount);
-
     return 0;
 }
